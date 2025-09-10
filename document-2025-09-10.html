@@ -1,65 +1,256 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-Hant">
 <head>
-    <title>Sample Document</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>互動式酒店預訂報告儀表板 (最終CSV驗證版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            margin: 40px; 
-            color: #333;
-            line-height: 1.6;
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* Tailwind gray-50 */
         }
-        h1 { 
-            color: #2c3e50; 
-            border-bottom: 2px solid #3498db; 
-            padding-bottom: 10px; 
+        /* 自訂滑桿樣式 */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #3b82f6; /* Tailwind blue-500 */
+            cursor: pointer;
+            border-radius: 50%;
+            margin-top: -6px;
+            transition: background-color 0.2s;
         }
-        h2 { 
-            color: #34495e; 
-            margin-top: 30px; 
+        input[type=range]::-webkit-slider-thumb:hover {
+            background: #2563eb; /* Tailwind blue-600 */
         }
-        p { 
-            margin-bottom: 15px; 
+        input[type=range]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #3b82f6;
+            cursor: pointer;
+            border-radius: 50%;
         }
-        .highlight { 
-            background-color: #f39c12; 
-            color: white; 
-            padding: 2px 6px; 
-            border-radius: 3px; 
-        }
-        ul { 
-            margin: 20px 0; 
-        }
-        li { 
-            margin-bottom: 8px; 
-        }
-        .footer {
-            margin-top: 50px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-            color: #666;
-            font-size: 0.9em;
+        .chart-bar {
+            transition: width 0.3s ease-in-out;
         }
     </style>
 </head>
-<body>
-    <h1>歡迎使用 HTML 轉 PDF 工具</h1>
-    <h2>功能特色</h2>
-    <p>這個工具讓您可以將 HTML 內容轉換為 PDF，支援<span class="highlight">完整的樣式</span>。</p>
-    
-    <h2>主要優點</h2>
-    <ul>
-        <li>即時預覽功能</li>
-        <li>專業的輸出品質</li>
-        <li>簡單易用的介面</li>
-        <li>支援 CSS 樣式</li>
-        <li>支援中文字體</li>
-    </ul>
-    
-    <p>只需貼上您的 HTML 內容，然後點擊「開啟列印預覽」即可創建您的文件！</p>
-    
-    <div class="footer">
-        <p>文件生成時間：${new Date().toLocaleString('zh-TW')}</p>
+<body class="p-4 sm:p-6 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- 標題 -->
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">YTD 酒店預訂趨勢儀表板</h1>
+            <p class="text-gray-500 mt-1">數據期間：2024年12月29日 - 2025年9月7日 (數據源: Untitled spreadsheet - Sheet1.csv)</p>
+        </header>
+
+        <!-- 關鍵指標 (KPIs) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow-sm">
+                <h3 class="text-sm font-medium text-gray-500">總奪冠次數最多</h3>
+                <p id="kpi-winner" class="text-3xl font-bold text-gray-800 mt-2"></p>
+                <p id="kpi-winner-count" class="text-lg text-blue-500 font-semibold"></p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-sm">
+                <h3 class="text-sm font-medium text-gray-500">最高單週預訂紀錄</h3>
+                <p id="kpi-max-hotel" class="text-3xl font-bold text-gray-800 mt-2 truncate"></p>
+                <p id="kpi-max-count" class="text-lg text-blue-500 font-semibold"></p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-sm">
+                <h3 class="text-sm font-medium text-gray-500">台北市場領導者</h3>
+                <p id="kpi-taipei-leader" class="text-3xl font-bold text-gray-800 mt-2 truncate"></p>
+                <p id="kpi-taipei-count" class="text-lg text-blue-500 font-semibold"></p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-sm">
+                <h3 class="text-sm font-medium text-gray-500">曼谷市場領先</h3>
+                <p id="kpi-bangkok-leader" class="text-3xl font-bold text-gray-800 mt-2 truncate"></p>
+                <p id="kpi-bangkok-count" class="text-lg text-blue-500 font-semibold"></p>
+            </div>
+        </div>
+
+        <!-- 每週數據互動區 -->
+        <div class="bg-white p-6 rounded-lg shadow-sm">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-2 md:mb-0">每週 TOP 10 數據回顧</h2>
+                <div class="flex items-center space-x-4">
+                    <span class="font-medium text-gray-600">選擇週次:</span>
+                    <span id="selected-week" class="font-bold text-lg text-blue-600 w-36 text-center"></span>
+                </div>
+            </div>
+            
+            <input type="range" id="week-slider" min="0" value="0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mb-8">
+            
+            <div id="weekly-data-container">
+                <!-- JavaScript動態生成內容 -->
+            </div>
+        </div>
     </div>
+
+    <script>
+        const weeklyRawData = [
+            {"date":"2024年12月29日","data":[["mandarin-oriental-taipei",10],["the-standard-bangkok-mahanakhon",4],["w-taipei",3],["w-macau",3],["st-regis-zhuhai",2],["four-seasons-osaka",2],["w-bangkok",2],["peninsula-tokyo",2],["four-seasons-bangkok-at-chao-praya-river",2],["halekulani-okinawa",2]]},
+            {"date":"2025年1月5日","data":[["ritz-carlton-fukuoka",8],["w-macau",8],["mandarin-oriental-taipei",7],["sindhorn-kempinski-bangkok",4],["ritz-carlton-bangkok",4],["andaz-singapore",4],["shangri-la-taipei",3],["four-seasons-bangkok-at-chao-praya-river",3],["grand-hyatt-taipei",3],["w-taipei",2]]},
+            {"date":"2025年1月12日","data":[["ritz-carlton-fukuoka",8],["w-taipei",5],["mandarin-oriental-taipei",5],["w-bangkok",4],["sindhorn-kempinski-bangkok",3],["w-macau",3],["the-ritz-carlton-hong-kong",2],["grand-hyatt-taipei",2],["peninsula-tokyo",2],["andaz-singapore",2]]},
+            {"date":"2025年1月19日","data":[["mandarin-oriental-pudong-shanghai",9],["mandarin-oriental-taipei",7],["w-taipei",6],["four-seasons-osaka",6],["conrad-shanghai",5],["halekulani-okinawa",5],["mandarin-oriental-tokyo",4],["rosewood-hong-kong",3],["st-regis-shenzhen",2],["andaz-vienna-am-belvedere",2]]},
+            {"date":"2025年1月26日","data":[["capella-taipei",18],["the-standard-bangkok-mahanakhon",4],["w-taipei",3],["four-seasons-osaka",3],["mandarin-oriental-taipei",2],["interContinental-kaohsiung",2],["w-macau",2],["shanghai-edition",2],["ritz-carlton-bali",1],["waldorf-astoria-bangkok",1]]},
+            {"date":"2025年2月2日","data":[["capella-taipei",10],["mandarin-oriental-taipei",9],["ritz-carlton-bangkok",5],["athenee-luxury-collection-bangkok",4],["four-seasons-bangkok-at-chao-praya-river",3],["intercontinental-bangkok-sukhumvit",3],["w-taipei",2],["shanghai-edition",2],["interContinental-kaohsiung",2],["four-seasons-osaka",2]]},
+            {"date":"2025年2月9日","data":[["mandarin-oriental-taipei",14],["w-macau",14],["intercontinental-bangkok-sukhumvit",7],["ritz-carlton-fukuoka",6],["capella-taipei",6],["ritz-carlton-bangkok",5],["athenee-luxury-collection-bangkok",3],["w-taipei",3],["four-seasons-osaka",3],["indigo-inuyama-urakuen-garden",3]]},
+            {"date":"2025年2月16日","data":[["w-macau",14],["mandarin-oriental-taipei",6],["ritz-carlton-fukuoka",6],["w-taipei",5],["athenee-luxury-collection-bangkok",5],["park-hyatt-niseko-hanazono",5],["ritz-carlton-bangkok",3],["indigo-inuyama-urakuen-garden",2],["four-seasons-bangkok-at-chao-praya-river",2],["rosewood-hong-kong",2]]},
+            {"date":"2025年2月23日","data":[["w-macau",18],["ritz-carlton-bangkok",12],["st-regis-macao",11],["mandarin-oriental-taipei",8],["w-taipei",5],["bangkok-marriott-marquis-queens-park",3],["st-regis-zhuhai",2],["interContinental-kaohsiung",2],["bulgari-tokyo",2],["four-seasons-bangkok-at-chao-praya-river",1]]},
+            {"date":"2025年3月2日","data":[["mandarin-oriental-taipei",12],["w-macau",11],["w-taipei",6],["bangkok-marriott-marquis-queens-park",5],["athenee-luxury-collection-bangkok",4],["ritz-carlton-bangkok",3],["four-seasons-macao",3],["indigo-inuyama-urakuen-garden",3],["st-regis-macao",2],["park-hyatt-niseko-hanazono",1]]},
+            {"date":"2025年3月9日","data":[["regent-taipei",37],["w-macau",16],["ritz-carlton-bangkok",7],["st-regis-hong-kong",6],["mandarin-oriental-taipei",5],["interContinental-kaohsiung",4],["ritz-carlton-fukuoka",3],["rosewood-bangkok",3],["w-taipei",3],["tiad-autograph-collection-nagoya",3]]},
+            {"date":"2025年3月16日","data":[["w-macau",9],["four-seasons-osaka",5],["w-taipei",4],["bangkok-marriott-marquis-queens-park",4],["mandarin-oriental-taipei",3],["ritz-carlton-bangkok",3],["the-ritz-carlton-hong-kong",3],["ritz-carlton-fukuoka",3],["ritz-carlton-bali",3],["capella-taipei",2]]},
+            {"date":"2025年3月23日","data":[["w-macau",23],["mandarin-oriental-taipei",9],["w-taipei",8],["capella-taipei",7],["four-seasons-osaka",5],["regent-taipei",3],["bangkok-marriott-marquis-queens-park",3],["four-seasons-macao",3],["ritz-carlton-bali",2],["ritz-carlton-bangkok",2]]},
+            {"date":"2025年3月30日","data":[["w-macau",12],["grand-hyatt-taipei",6],["st-regis-macao",5],["mandarin-oriental-taipei",4],["w-taipei",4],["four-seasons-macao",4],["aman-nai-lert-bangkok",3],["ritz-carlton-bangkok",2],["rosewood-bangkok",2],["athenee-luxury-collection-bangkok",2]]},
+            {"date":"2025年4月6日","data":[["bangkok-marriott-marquis-queens-park",9],["mandarin-oriental-taipei",7],["w-macau",7],["capella-taipei",7],["four-seasons-macao",4],["w-taipei",2],["ritz-carlton-bali",2],["janu-tokyo",2],["waldorf-astoria-osaka",2],["four-seasons-tokyo-at-otemachi",2]]},
+            {"date":"2025年4月13日","data":[["w-macau",14],["mandarin-oriental-taipei",7],["capella-taipei",5],["w-taipei",4],["four-seasons-macao",4],["four-seasons-osaka",3],["intercontinental-chiang-mai-mae-ping",3],["st-regis-macao",2],["patina-osaka",2],["peninsula-beijing",2]]},
+            {"date":"2025年4月20日","data":[["w-macau",11],["ritz-carlton-bangkok",7],["bangkok-marriott-marquis-queens-park",6],["interContinental-kaohsiung",5],["mandarin-oriental-taipei",4],["w-taipei",6],["mandarin-oriental-bangkok",6],["four-seasons-osaka",3],["capella-taipei",4],["patina-osaka",3]]},
+            {"date":"2025年4月27日","data":[["ritz-carlton-bangkok",9],["w-macau",7],["w-taipei",6],["mandarin-oriental-taipei",4],["capella-taipei",4],["st-regis-macao",3],["patina-osaka",2],["bangkok-marriott-marquis-queens-park",2],["four-seasons-hong-kong",1],["waldorf-astoria-bangkok",1]]},
+            {"date":"2025年5月4日","data":[["w-macau",18],["mandarin-oriental-taipei",7],["capella-taipei",5],["mandarin-oriental-singapore",4],["four-seasons-bangkok-at-chao-praya-river",3],["st-regis-macao",3],["ritz-carlton-bangkok",2],["patina-osaka",2],["palais-de-chine-hotel-taipei",2],["w-taipei",1]]},
+            {"date":"2025年5月11日","data":[["w-macau",13],["ritz-carlton-bangkok",11],["mandarin-oriental-taipei",6],["grand-hyatt-taipei",6],["bangkok-marriott-marquis-queens-park",6],["capella-taipei",5],["w-taipei",3],["patina-osaka",3],["four-seasons-bangkok-at-chao-praya-river",3],["aman-nai-lert-bangkok",3]]},
+            {"date":"2025年5月18日","data":[["mandarin-oriental-taipei",12],["w-macau",8],["bangkok-marriott-marquis-queens-park",8],["ritz-carlton-bangkok",5],["w-taipei",5],["okura-tokyo",5],["mandarin-oriental-bangkok",4],["grand-hyatt-taipei",3],["patina-osaka",3],["four-seasons-bangkok-at-chao-praya-river",3]]},
+            {"date":"2025年5月25日","data":[["mandarin-oriental-taipei",12],["ritz-carlton-bangkok",9],["interContinental-kaohsiung",8],["four-seasons-bangkok-at-chao-praya-river",8],["bangkok-marriott-marquis-queens-park",8],["w-macau",5],["w-taipei",4],["four-seasons-osaka",4],["capella-taipei",3],["grand-hyatt-taipei",2]]},
+            {"date":"2025年6月1日","data":[["bangkok-marriott-marquis-queens-park",18],["ritz-carlton-bangkok",12],["w-taipei",11],["mandarin-oriental-taipei",6],["capella-taipei",6],["st-regis-macao",5],["grand-hyatt-taipei",5],["patina-osaka",2],["four-seasons-bangkok-at-chao-praya-river",2],["four-seasons-tokyo-at-otemachi",2]]},
+            {"date":"2025年6月8日","data":[["ritz-carlton-bangkok",14],["mandarin-oriental-bangkok",11],["w-taipei",10],["mandarin-oriental-taipei",9],["w-macau",8],["interContinental-kaohsiung",8],["patina-osaka",4],["bangkok-marriott-marquis-queens-park",4],["capella-taipei",4],["palais-de-chine-hotel-taipei",4]]},
+            {"date":"2025年6月15日","data":[["w-macau",16],["ritz-carlton-bangkok",7],["ritz-carlton-bali",7],["mandarin-oriental-taipei",6],["w-taipei",6],["st-regis-macao",5],["capella-taipei",4],["four-seasons-macao",3],["bangkok-marriott-marquis-queens-park",2],["patina-osaka",2]]},
+            {"date":"2025年6月22日","data":[["w-macau",13],["ritz-carlton-bangkok",7],["mandarin-oriental-taipei",10],["w-taipei",8],["four-seasons-macao",7],["patina-osaka",6],["four-seasons-bangkok-at-chao-praya-river",5],["interContinental-kaohsiung",4],["mandarin-oriental-bangkok",4],["bangkok-marriott-marquis-queens-park",2]]},
+            {"date":"2025年6月29日","data":[["interContinental-kaohsiung",19],["w-macau",17],["ritz-carlton-bangkok",11],["mandarin-oriental-taipei",11],["capella-taipei",7],["bangkok-marriott-marquis-queens-park",5],["kimpton-maa-lai-bangkok",5],["four-seasons-bangkok-at-chao-praya-river",4],["four-seasons-macao",3],["w-bangkok",2]]},
+            {"date":"2025年7月6日","data":[["ritz-carlton-bangkok",13],["st-regis-macao",8],["mandarin-oriental-taipei",8],["w-macau",7],["four-seasons-bangkok-at-chao-praya-river",6],["w-taipei",5],["w-bangkok",5],["bangkok-marriott-marquis-queens-park",5],["kimpton-maa-lai-bangkok",4],["athenee-luxury-collection-bangkok",2]]},
+            {"date":"2025年7月13日","data":[["ritz-carlton-bangkok",21],["w-taipei",13],["interContinental-kaohsiung",13],["intercontinental-bangkok-sukhumvit",10],["mandarin-oriental-taipei",8],["w-macau",6],["kimpton-maa-lai-bangkok",5],["aman-nai-lert-bangkok",3],["four-seasons-bangkok-at-chao-praya-river",2],["capella-taipei",2]]},
+            {"date":"2025年7月20日","data":[["mandarin-oriental-taipei",65],["ritz-carlton-bangkok",11],["w-macau",10],["interContinental-kaohsiung",9],["capella-taipei",9],["w-taipei",8],["mandarin-oriental-tokyo",6],["kimpton-maa-lai-bangkok",3],["sofitel-bangkok-sukhumvit",3],["four-seasons-bangkok-at-chao-praya-river",2]]},
+            {"date":"2025年7月27日","data":[["mandarin-oriental-taipei",65],["w-macau",10],["ritz-carlton-bangkok",9],["w-taipei",7],["interContinental-kaohsiung",5],["mandarin-oriental-pudong-shanghai",4],["kimpton-maa-lai-bangkok",4],["w-bangkok",4],["capella-taipei",4],["four-seasons-bangkok-at-chao-praya-river",5]]},
+            {"date":"2025年8月3日","data":[["mandarin-oriental-taipei",16],["w-taipei",11],["ritz-carlton-bangkok",9],["w-macau",7],["grand-hyatt-taipei",5],["intercontinental-bangkok-sukhumvit",6],["four-seasons-bangkok-at-chao-praya-river",3],["mandarin-oriental-pudong-shanghai",3],["w-bangkok",2],["capella-taipei",2]]},
+            {"date":"2025年8月10日","data":[["mandarin-oriental-taipei",16],["w-taipei",9],["w-macau",7],["capella-taipei",7],["ritz-carlton-bangkok",6],["mandarin-oriental-pudong-shanghai",4],["four-seasons-bangkok-at-chao-praya-river",4],["grand-hyatt-taipei",3],["interContinental-kaohsiung",3],["st-regis-macao",2]]},
+            {"date":"2025年8月17日","data":[["w-macau",17],["interContinental-kaohsiung",11],["mandarin-oriental-taipei",10],["w-taipei",10],["capella-taipei",5],["dusit-thani-bangkok",5],["four-seasons-bangkok-at-chao-praya-river",4],["mandarin-oriental-pudong-shanghai",4],["ritz-carlton-bangkok",3],["st-regis-macao",1]]},
+            {"date":"2025年8月24日","data":[["mandarin-oriental-taipei",13],["w-taipei",9],["ritz-carlton-bangkok",9],["st-regis-macao",7],["patina-osaka",7],["four-seasons-tokyo-at-otemachi",6],["mandarin-oriental-tokyo",6],["bangkok-marriott-marquis-queens-park",5],["four-seasons-bangkok-at-chao-praya-river",4],["peninsula-bangkok",3]]},
+            {"date":"2025年9月7日","data":[["ritz-carlton-bangkok",9],["bangkok-marriott-marquis-queens-park",3],["w-macau",2],["interContinental-kaohsiung",2],["mandarin-oriental-taipei",1],["w-taipei",1],["grand-hyatt-taipei",1],["capella-taipei",1],["four-seasons-macao",1],["st-regis-macao",1]]}
+        ];
+
+        const slider = document.getElementById('week-slider');
+        const selectedWeekEl = document.getElementById('selected-week');
+        const container = document.getElementById('weekly-data-container');
+        
+        // Helper function to format hotel names
+        const formatHotelName = (name) => {
+            if (!name) return 'N/A';
+            return name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        };
+
+        // --- KPI Calculation ---
+        function calculateKPIs(data) {
+            const winnerCounts = {};
+            let maxBooking = { hotel: '', count: 0 };
+            const taipeiWinners = {};
+            const bangkokWinners = {};
+
+            data.forEach(week => {
+                if (week.data && week.data.length > 0) {
+                    const topHotel = week.data[0][0];
+                    
+                    winnerCounts[topHotel] = (winnerCounts[topHotel] || 0) + 1;
+
+                    if (topHotel.toLowerCase().includes('taipei')) {
+                        taipeiWinners[topHotel] = (taipeiWinners[topHotel] || 0) + 1;
+                    }
+                    if (topHotel.toLowerCase().includes('bangkok')) {
+                        bangkokWinners[topHotel] = (bangkokWinners[topHotel] || 0) + 1;
+                    }
+
+                    week.data.forEach(([hotel, count]) => {
+                        if (count > maxBooking.count) {
+                            maxBooking = { hotel, count };
+                        }
+                    });
+                }
+            });
+
+            const findLeader = (counts) => {
+                if (Object.keys(counts).length === 0) return { leader: 'N/A', wins: 0 };
+                const leader = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+                return { leader: leader[0], wins: leader[1] };
+            };
+            
+            const overallLeader = findLeader(winnerCounts);
+            const taipeiLeader = findLeader(taipeiWinners);
+            const bangkokLeader = findLeader(bangkokWinners);
+
+            return { overallLeader, maxBooking, taipeiLeader, bangkokLeader };
+        }
+
+        function updateKPIs(kpis) {
+            document.getElementById('kpi-winner').textContent = formatHotelName(kpis.overallLeader.leader);
+            document.getElementById('kpi-winner-count').textContent = `${kpis.overallLeader.wins} 次`;
+
+            document.getElementById('kpi-max-hotel').textContent = formatHotelName(kpis.maxBooking.hotel);
+            document.getElementById('kpi-max-count').textContent = `${kpis.maxBooking.count} 筆`;
+            
+            document.getElementById('kpi-taipei-leader').textContent = formatHotelName(kpis.taipeiLeader.leader);
+            document.getElementById('kpi-taipei-count').textContent = `${kpis.taipeiLeader.wins} 次奪冠`;
+            
+            document.getElementById('kpi-bangkok-leader').textContent = formatHotelName(kpis.bangkokLeader.leader);
+            document.getElementById('kpi-bangkok-count').textContent = `${kpis.bangkokLeader.wins} 次奪冠`;
+        }
+
+
+        slider.max = weeklyRawData.length - 1;
+
+        function updateDisplay(weekIndex) {
+            const weekData = weeklyRawData[weekIndex];
+            selectedWeekEl.textContent = weekData.date;
+            
+            if (!weekData.data || weekData.data.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center">該週沒有數據。</p>';
+                return;
+            }
+            
+            const maxBookings = Math.max(1, ...weekData.data.map(item => item[1]));
+            
+            let html = '<div class="space-y-4">';
+            const colors = ['bg-blue-500', 'bg-blue-400', 'bg-blue-300', 'bg-gray-400', 'bg-gray-300', 'bg-gray-300', 'bg-gray-300', 'bg-gray-300', 'bg-gray-300', 'bg-gray-300'];
+            
+            weekData.data.forEach((item, index) => {
+                const hotelName = formatHotelName(item[0]);
+                const bookings = item[1];
+                const barWidth = bookings > 0 ? (bookings / maxBookings) * 100 : 0;
+
+                html += `
+                    <div class="grid grid-cols-12 items-center gap-x-2 sm:gap-x-4">
+                        <div class="col-span-1 text-base sm:text-lg font-bold text-gray-500 text-center">${index + 1}</div>
+                        <div class="col-span-5 sm:col-span-4 text-gray-700 font-medium truncate" title="${hotelName}">${hotelName}</div>
+                        <div class="col-span-6 sm:col-span-7">
+                             <div class="w-full bg-gray-100 rounded-full h-7">
+                                <div class="chart-bar ${colors[index] || 'bg-gray-200'} h-7 rounded-full flex items-center justify-end pr-2" style="width: ${barWidth}%;">
+                                    <span class="text-white text-sm font-bold">${bookings}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        slider.addEventListener('input', (event) => {
+            updateDisplay(event.target.value);
+        });
+
+        // --- Initial Load ---
+        const kpis = calculateKPIs(weeklyRawData);
+        updateKPIs(kpis);
+
+        if (weeklyRawData.length > 0) {
+            const latestWeekIndex = weeklyRawData.length - 1;
+            slider.value = latestWeekIndex;
+            updateDisplay(latestWeekIndex);
+        } else {
+             updateDisplay(0);
+        }
+
+    </script>
 </body>
 </html>
+
